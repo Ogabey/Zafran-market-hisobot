@@ -1,9 +1,9 @@
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select, delete, func 
+from sqlalchemy.dialects.postgresql import insert 
 from utils.db.database import AsyncSessionLocal 
 from utils.db.models import User
 from utils.loggers import logger
-
+from datetime import datetime 
 
 async def add_user(tg_id: int, full_name: str, phone: str):
     async with AsyncSessionLocal() as session:  
@@ -15,7 +15,6 @@ async def add_user(tg_id: int, full_name: str, phone: str):
         await session.execute(stmt)
         await session.commit()
         logger.info(f"Foydalanuvchi saqlandi | id={tg_id} | ism={full_name}")
-
 
 async def get_user(tg_id: int) -> User | None: 
     async with AsyncSessionLocal() as session: 
@@ -29,14 +28,10 @@ async def get_user(tg_id: int) -> User | None:
             logger.debug(f"Foydalanuvchi topilmadi | id={tg_id}")
         return user
 
-
-
 async def get_all_users() -> list[User]: 
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(User)) 
         return result.scalars().all() 
-
-
 
 async def delete_user(tg_id: int):
     async with AsyncSessionLocal() as session:
@@ -47,12 +42,21 @@ async def delete_user(tg_id: int):
         if user: 
             await session.delete(user)
             await session.commit()
-            logger.info(f"Foydalanuvchi o'chirildi | id={tg_id}") 
-            
+            logger.info(f"Foydalanuvchi o'chirildi | id={tg_id}")
 
+async def count_users() -> int: 
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(func.count()).select_from(User)
+        )
+        return result.scalar()
 
-
-
-
-
-
+async def count_users_today() -> int: 
+    async with AsyncSessionLocal() as session:
+        today = datetime.now().date()
+        result = await session.execute(
+            select(func.count()).select_from(User).where(
+                func.date(User.create_at) == today 
+            )
+        )
+        return result.scalar()
